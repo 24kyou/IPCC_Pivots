@@ -1,3 +1,7 @@
+//编译命令：gcc pivot.c -lm -O3 -o pivot
+//运行命令：./pivot
+//编译器版本：gcc 7.5.0
+
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
@@ -29,7 +33,7 @@ double SumDistance(const int k, const int n, const int dim, double* coord, int* 
     double chebyshevSum = 0;
     for(i=0; i<n; i++){
         int j;
-        for(j=0; j<n; j++){
+        for(j=i+1; j<n; j++){
             double chebyshev = 0;
             int ki;
             for(ki=0; ki<k; ki++){
@@ -39,7 +43,7 @@ double SumDistance(const int k, const int n, const int dim, double* coord, int* 
             chebyshevSum += chebyshev;
         }
     }
-
+    chebyshevSum *= 2;
     free(rebuiltCoord);
 
     return chebyshevSum;
@@ -63,10 +67,12 @@ void Combination(int ki, const int k, const int n, const int dim, const int M, d
         int i;
         for(i=pivots[ki-1]+1; i<n; i++){
             pivots[ki] = i;//1->499
-
+            struct timeval TP1, TP2;
             // Calculate sum of distance while combining different pivots.
+            gettimeofday(&TP1, NULL);
             double distanceSum = SumDistance(k, n, dim, coord, pivots);
-
+            gettimeofday(&TP2, NULL);
+            if(i==n-1) printf("Using time : %f ms\n", (TP2.tv_sec - TP1.tv_sec) * 1000.0 + (TP2.tv_usec - TP1.tv_usec) / 1000.0);
             // put data at the end of array
             maxDistanceSum[M] = distanceSum;
             minDistanceSum[M] = distanceSum;
@@ -114,23 +120,25 @@ void Combination(int ki, const int k, const int n, const int dim, const int M, d
     // printf("pivots:%d\t",pivots[ki-1]+1);
     for(i=pivots[ki-1]+1; i<n; i++) {
         pivots[ki] = i;//把第一项变为0 pivots里面所含的是索引
+        struct timeval TP1,TP2;
+        gettimeofday(&TP1, NULL);
         Combination(ki+1, k, n, dim, M, coord, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots);
-
+        gettimeofday(&TP2, NULL);
 
         /** Iteration Log : pivots computed, best pivots, max distance sum, min distance sum pivots, min distance sum
         *** You can delete the logging code. **/
         if(ki==k-2){
+            printf("Using time : %f ms\n", (TP2.tv_sec - TP1.tv_sec) * 1000.0 + (TP2.tv_usec - TP1.tv_usec) / 1000.0);
             int kj;
             for(kj=0; kj<k; kj++){
                 printf("pivots:%d ", pivots[kj]);
             }
-            putchar('\t');
             for(kj=0; kj<k; kj++){
-                printf("MaxPivots:%d ", maxDisSumPivots[kj]);
+                printf("MaxPivots:%d \t", maxDisSumPivots[kj]);
             }
             printf("maxDistanceSum: %lf\t", maxDistanceSum[0]);
             for(kj=0; kj<k; kj++){
-                printf("minPivots:%d ", minDisSumPivots[kj]);
+                printf("minPivots:%d \t", minDisSumPivots[kj]);
             }
             printf("minDistanceSum:%lf\n", minDistanceSum[0]);
         }
@@ -181,30 +189,25 @@ int main(int argc, char* argv[]){
     }
     fclose(file);
 
+
     // maxDistanceSum : the largest M distance sum
+    // minDistanceSum : the smallest M distance sum
     double* maxDistanceSum = (double*)malloc(sizeof(double) * (M+1));//1001的空间,考虑存储空间,double 64
+    double* minDistanceSum = (double*)malloc(sizeof(double) * (M + 1));
     for(i=0; i<M; i++){
         maxDistanceSum[i] = 0;
+        minDistanceSum[i] = __DBL_MAX__;
     }
+
     // maxDisSumPivots : the top M pivots combinations
+    // minDisSumPivots : the bottom M pivots combinations
     int* maxDisSumPivots = (int*)malloc(sizeof(int) * k * (M+1));//2*1001
+    int* minDisSumPivots = (int*)malloc(sizeof(int) * k * (M + 1));
     for(i=0; i<M; i++){
         int ki;
         for(ki=0; ki<k; ki++){
             maxDisSumPivots[i*k + ki] = 0;//创建了2*1001的为0的矩阵
-        }
-    }
-    // minDistanceSum : the smallest M distance sum
-    double* minDistanceSum = (double*)malloc(sizeof(double) * (M+1));
-    for(i=0; i<M; i++){
-        minDistanceSum[i] = __DBL_MAX__;
-    }
-    // minDisSumPivots : the bottom M pivots combinations
-    int* minDisSumPivots = (int*)malloc(sizeof(int) * k * (M+1));
-    for(i=0; i<M; i++){
-        int ki;
-        for(ki=0; ki<k; ki++){
-            minDisSumPivots[i*k + ki] = 0;
+            minDisSumPivots[i * k + ki] = 0;
         }
     }
 
