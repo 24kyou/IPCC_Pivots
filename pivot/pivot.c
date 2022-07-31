@@ -19,7 +19,7 @@ double SumDistance(const int k, const int n, const int dim, double* coord, int* 
             int pivoti = pivots[ki];
             int j;
             for(j=0; j<dim; j++){
-                distance += pow(coord[pivoti*dim + j] - coord[i*dim + j] ,2);// (x-y)^2
+                distance += pow(coord[pivoti*dim + j] - coord[i*dim + j] ,2);// (x-y)^2 距离公式
             }
             rebuiltCoord[i*k + ki] = sqrt(distance);//二维矩阵赋值
         }
