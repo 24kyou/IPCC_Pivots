@@ -95,7 +95,9 @@ min:83 226 43769.849602
 
 ## 针对解题报告里的优化点3进行优化 得到耗时：183401.57ms
 
-## 开O3优化 得到耗时：33002.64200ms 开O2优化 得到耗时：28000ms
+## 开O3优化 得到耗时：33002.64200ms 
+
+## 开O2优化 得到耗时：28000ms
 
 ### 0729:
 
@@ -165,10 +167,13 @@ source setvars.sh 脚本即可
 
 开会总结:
 
-1. 把icpc g++的问题报告
-2. 修一修sumdistance的bug
-3. 
+- [x] 把icpc g++的问题报告
+- [x] 修一修sumdistance的bug
 
-对单个 chebyshevdistance  openmp  reduction max
+### 0804
 
-对chebyshevdistance  
+check前几天不在的进度,使用gdb在服务器上跑了一遍,发现是因为最后的fclose函数的输入有问题,不知道为什么在本地跑程序的时候没有发现这个问题...但是最后还是找到了..
+
+## 对SumDistance做并行优化, 直接优化:11300ms 删除rebuild版本:19000.ms
+
+跑最大32线程 得到耗时:5000-6000ms左右
