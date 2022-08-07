@@ -27,7 +27,7 @@ void SumP2PDistance(double* P2PDist, double* coord, int n, int dim) {
         for (ki = 0; ki < n; ki++) {
             double distance = 0;
             int j;
-            for (j = 0; j < dim; j++) {
+            for (j = 0; j < dim; j++) { 
                 distance += pow(coord[ki * dim + j] - coord[i * dim + j], 2);
             }
             //Array Content: Distance[i,ki]
@@ -152,6 +152,7 @@ double SumDistance(const int k, const int n, const int dim, double* coord, int* 
 // minDisSumPivots : the bottom M pivots combinations
 void Combination(int ki, const int k, const int n, const int dim, const int M, double* coord, int* pivots,
     double* maxDistanceSum, int* maxDisSumPivots, double* minDistanceSum, int* minDisSumPivots, double* P2PDist) {
+    //end of recur
     if (ki == k - 1) {
         int i;
         for (i = pivots[ki - 1] + 1; i < n; i++) {
@@ -205,8 +206,8 @@ void Combination(int ki, const int k, const int n, const int dim, const int M, d
 
     // Recursively call Combination() to combine pivots
     int i;
-    for (i = pivots[ki - 1] + 1; i < n - 1; i++) {
-        pivots[ki] = i;//把第一项变为0 pivots里面所含的是索引
+    for (i = pivots[ki - 1] + 1; i < n; i++) {
+        pivots[ki] = i;// p1 start from　 0　pivots里面所含的是索引
         //struct timeval TP1, TP2;
         //gettimeofday(&TP1, NULL);
         Combination(ki + 1, k, n, dim, M, coord, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
