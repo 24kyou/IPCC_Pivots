@@ -7,8 +7,8 @@
     #SBATCH --ntasks-per-node=32
     #SBATCH --error=%j.err
     #SBATCH --output=%j.out
-    icpc pivot_0808.c -Ofast -lm -qopenmp -o pivot_0808
-    ./pivot_0808
+    icpc pivot_0808.c -Ofast -lm -qopenmp -o pivot_0809
+    ./pivot_0809
 
     Add batch work: sbatch run.sh
 *******/
@@ -19,7 +19,6 @@
 #include<sys/time.h>
 #include<omp.h>
 
-static unsigned long long count = 0;
 
 void SumP2PDistance(double* P2PDist, double* coord, int n, int dim) {
     int i;
@@ -32,7 +31,7 @@ void SumP2PDistance(double* P2PDist, double* coord, int n, int dim) {
             for (j = 0; j < dim; j++) {
                 distance += pow(coord[ki * dim + j] - coord[i * dim + j], 2);
             }
-            //Array Content: Distance[i,ki]
+            //maxDistanceSumay Content: Distance[i,ki]
             P2PDist[i * n + ki] = sqrt(distance);
             //Testlog:
             //if(i==0) printf("point1:%d\tpoint2:%d\tdistance:%lf\n", i, ki, P2PDist[i * (n - 1) + ki - subnum]);
@@ -41,7 +40,7 @@ void SumP2PDistance(double* P2PDist, double* coord, int n, int dim) {
     return;
 }
 
-
+static unsigned long long count = 0;
 void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
     int cnt = 0;
     unsigned long long loop,one_loop=1;
@@ -66,8 +65,8 @@ void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
     count++; cnt++;
 
     for (i = k - 1; i >= 0; i--) {
-        if (ary[i] < i + n - k) {	//the least last array num < n-1
-            ary[i]++;
+        if (pivots[i] < i + n - k) {	//the least last maxDistanceSumay num < n-1
+            pivots[i]++;
             for (ki = i + 1; ki < k; ki++) pivots[ki] = pivots[ki - 1] + 1;
             i = n;
             if (count == loop) {
@@ -75,7 +74,7 @@ void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
                 //printf("%lld: ", cnt);
                 for (j = 0; j < n; j++) {
                     //printf("%d ", ary[j]);
-                    start_pivots[cnt * n + j] = ary[j];
+                    start_pivots[cnt * n + j] = pivots[j];
                 }
                 //printf("\n");
                 cnt++;
@@ -112,9 +111,54 @@ void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
 //    return chebyshevSum;
 //}
 
+void make_maxheap(double* minDistanceSum, int* minDisSumPivots, int end, int start,int k) {
+    int fa = start;
+    int child = fa * 2 + 1;
+    while (child <= end) {
+        if (child + 1 <= end && minDistanceSum[child] < minDistanceSum[child + 1]) child++;
+        if (minDistanceSum[fa] > minDistanceSum[child]) return;
+        else { //否则交换父子内容再继续子节点和孙节点比较
+            double temp = minDistanceSum[child];
+            minDistanceSum[child] = minDistanceSum[fa];
+            minDistanceSum[fa] = temp;
+            int kj;
+            for (kj = 0; kj < k; kj++) {
+                int temp = minDisSumPivots[child * k + kj];
+                minDisSumPivots[child * k + kj] = minDisSumPivots[fa * k + kj];
+                minDisSumPivots[fa * k + kj] = temp;
+            }
+            fa = child;
+            child = fa * 2 + 1;
+        }
+    }
+}
+
+void make_minheap(double* maxDistanceSum, int* maxDisSumPivots, int end, int start, int k) {
+    int fa = start;
+    int child = fa * 2 + 1;
+    while (child <= end) {
+        if (child + 1 <= end && maxDistanceSum[child] > maxDistanceSum[child + 1]) child++;
+        if (maxDistanceSum[fa] < maxDistanceSum[child]) return;
+        else { //否则交换父子内容再继续子节点和孙节点比较
+            double temp = maxDistanceSum[child];
+            maxDistanceSum[child] = maxDistanceSum[fa];
+            maxDistanceSum[fa] = temp;
+            int kj;
+            for (kj = 0; kj < k; kj++) {
+                int temp = maxDisSumPivots[child * k + kj];
+                maxDisSumPivots[child * k + kj] = maxDisSumPivots[fa * k + kj];
+                maxDisSumPivots[fa * k + kj] = temp;
+            }
+            fa = child;
+            child = fa * 2 + 1;
+        }
+    }
+}
+
+int cnt = 0;
+int flag = 1;
 void caculate_sort(const int k, const int n, const int M, int* pivots,
     double* maxDistanceSum, int* maxDisSumPivots, double* minDistanceSum, int* minDisSumPivots, double* P2PDist){
-    
     int i;
     double chebyshevSum = 0;
 #pragma omp parallel for reduction(+:chebyshevSum) num_threads(32)
@@ -132,18 +176,59 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
         }
     }
     chebyshevSum *= 2;
+    if(cnt<M){
+        maxDistanceSum[cnt] = chebyshevSum;
+        int kj;
+        for (kj = 0; kj < k; kj++)  maxDisSumPivots[cnt * k + kj] = pivots[kj];
+        cnt++;
+    }
+    if(cnt==M && flag){
+        int ki;
+        //1st: build minheap 
+        for (ki = M / 2 - 1; ki >= 0; ki--) {
+            make_minheap(maxDistanceSum, maxDisSumPivots, M-1, ki,k);
+        }
+        //build maxheap from minheap
+        for(ki=0;ki<M;ki++){
+            minDistanceSum[ki] = maxDistanceSum[M-ki-1];
+            int kj;
+            for (kj = 0; kj < k; kj++) {
+                minDisSumPivots[ki*k + kj] = maxDisSumPivots[(M-ki-1)*k + kj];
+            }
+        }
+        flag--;
+    }
+    else{
+        int kj;
+#pragma omp sections
+        {
+#pragma omp section
+            if (chebyshevSum > maxDistanceSum[0]) {
+                maxDistanceSum[0] = chebyshevSum;
+                for (kj = 0; kj < k; kj++) maxDisSumPivots[kj] = pivots[kj];
+                make_minheap(maxDistanceSum, maxDisSumPivots, M, 0, k);
+            }
+#pragma omp section
+            if (chebyshevSum < minDistanceSum[0]) {
+                minDistanceSum[0] = chebyshevSum;
+                for (kj = 0; kj < k; kj++) minDisSumPivots[kj] = pivots[kj];
+                make_maxheap(minDistanceSum, minDisSumPivots, M, 0, k);
 
-    maxDistanceSum[M] = chebyshevSum;
+            }
+        }
+    }
+
+
+    // sort
+    /*maxDistanceSum[M] = chebyshevSum;
     minDistanceSum[M] = chebyshevSum;
     int kj;
     for (kj = 0; kj < k; kj++) {
         maxDisSumPivots[M * k + kj] = pivots[kj];
         minDisSumPivots[M * k + kj] = pivots[kj];
-    }
-    // sort
-
-    //最后的想法是堆排序加并行merge
-    int a;
+    }*/
+    
+    /*int a;
     for (a = M; a > 0; a--) {
         if (maxDistanceSum[a] > maxDistanceSum[a - 1]) {
             double temp = maxDistanceSum[a];
@@ -157,6 +242,7 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
             }
         }
         if (minDistanceSum[a] < minDistanceSum[a - 1]) {
+            //swap()
             double temp = minDistanceSum[a];
             minDistanceSum[a] = minDistanceSum[a - 1];
             minDistanceSum[a - 1] = temp;
@@ -167,8 +253,7 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
                 minDisSumPivots[(a - 1) * k + kj] = temp;
             }
         }
-    }
-
+    }*/
 }
 
 
@@ -178,7 +263,7 @@ void Combination(const int k, const int n, const int M, int* pivots,
     //第一次
     caculate_sort(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
     for (i = k - 1; i >= 0; i--) {
-        if (pivots[i] < i + n - k) {	//the least last array num < n-1
+        if (pivots[i] < i + n - k) {	//the least last maxDistanceSumay num < n-1
             pivots[i]++;
             for (j=i+1; j<k; j++) pivots[j] = pivots[j - 1] + 1;
             i = k;
@@ -243,17 +328,17 @@ int main(int argc, char* argv[]){
 
     // maxDisSumPivots : the top M pivots combinations
     // minDisSumPivots : the bottom M pivots combinations
-    int* maxDisSumPivots = (int*)malloc(sizeof(int) * k * (M + 1));//2*1001
+    int* maxDisSumPivots = (int*)malloc(sizeof(int) * k * (M + 1));
     int* minDisSumPivots = (int*)malloc(sizeof(int) * k * (M + 1));
     for (i = 0; i < M; i++) {
         int ki;
         for (ki = 0; ki < k; ki++) {
-            maxDisSumPivots[i * k + ki] = 0;//创建了2*1001的为0的矩阵
+            maxDisSumPivots[i * k + ki] = 0;
             minDisSumPivots[i * k + ki] = 0;
         }
     }
 
-    // pivots : indexes of pivots with dummy array head
+    // pivots : indexes of pivots with dummy maxDistanceSumay head
     int* pivots = (int*)malloc(sizeof(int) * k);
     for (i = 0; i < k; i++) pivots[i] = i;
 
@@ -263,11 +348,40 @@ int main(int argc, char* argv[]){
 
     //StartPivots: store the specific indexs of pivots to start with these threads  default:32core
     int* StartPivots = (int*)malloc(sizeof(int) * 31 * k);
-    SumStart_pivots(n, k, StartPivots,pivots);
+    //SumStart_pivots(n, k, StartPivots,pivots);
     for (i = 0; i < k; i++) pivots[i] = i;
 
     // Main loop. Combine different pivots with recursive function and evaluate them. Complexity : O( n^(k+2) )
     Combination(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
+    //2rd: sort minheap 
+    for (i = M - 1; i >= 0; i--) {
+        //swap(0,i)
+        double temp = maxDistanceSum[i];
+        maxDistanceSum[i] = maxDistanceSum[0];
+        maxDistanceSum[0] = temp;
+        int j;
+        for (j = 0; j < k; j++) {
+            int temp = maxDisSumPivots[i * k + j];
+            maxDisSumPivots[i * k + j] = maxDisSumPivots[j];
+            maxDisSumPivots[j] = temp;
+        }
+        make_minheap(maxDistanceSum, maxDisSumPivots, i-1, 0, k);
+    }
+    //sort maxheap 
+    for (i = M - 1; i >= 0; i--) {
+        //swap(0,i)
+        double temp = minDistanceSum[i];
+        minDistanceSum[i] = minDistanceSum[0];
+        minDistanceSum[0] = temp;
+        int j;
+        for (j = 0; j < k; j++) {
+            int temp = minDisSumPivots[i * k + j];
+            minDisSumPivots[i * k + j] = minDisSumPivots[j];
+            minDisSumPivots[j] = temp;
+        }
+        make_maxheap(minDistanceSum, minDisSumPivots, i - 1, 0, k);
+    }
+
     free(P2PDist);
     // End timing
     struct timeval end;
@@ -304,20 +418,6 @@ int main(int argc, char* argv[]){
         printf("%d ", minDisSumPivots[ki]);
     }
     printf("%lf\n", minDistanceSum[0]);
-    // for(i=0; i<M; i++){
-        // int ki;
-        // for(ki=0; ki<k; ki++){
-            // printf("%d\t", maxDisSumPivots[i*k + ki]);
-        // }
-        // printf("%lf\n", maxDistanceSum[i]);
-    // }
-    // for(i=0; i<M; i++){
-        // int ki;
-        // for(ki=0; ki<k; ki++){
-            // printf("%d\t", minDisSumPivots[i*k + ki]);
-        // }
-        // printf("%lf\n", minDistanceSum[i]);
-    // }
 
     return 0;
 }
