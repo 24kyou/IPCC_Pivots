@@ -25,7 +25,13 @@ double SumDistance(const int k, const int n, const int dim, double* coord, int* 
         }
     }
 
-    // Calculate the sum of Chebyshev distance with rebuilt coordinates between every points
+    // Calculate the sum of Chebyshev distance with rebuilt coordinate
+    //
+    //
+    //
+    //
+    //
+    // s between every points
     double chebyshevSum = 0;
     for(i=0; i<n; i++){
         int j;
