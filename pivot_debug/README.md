@@ -14,3 +14,6 @@ result.txt中缺少了refer-4dim-1h.txt中的line 251的一条数据
 
 复现问题的话,直接copy整个文件夹,在服务器上sbatch run.sh即可
 
+//已解决 问题出在对堆的长度控制有问题
+
+因为最后

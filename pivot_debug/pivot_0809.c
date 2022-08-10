@@ -109,12 +109,23 @@ void make_maxheap(double* minDistanceSum, int* minDisSumPivots, int end, int sta
             child = fa * 2 + 1;
         }
     }
+    return;
 }
 
 void make_minheap(double* maxDistanceSum, int* maxDisSumPivots, int end, int start, int k) {
+    int flag = 0;
+    if (maxDisSumPivots[0] == 16 && maxDisSumPivots[1] == 35 && maxDisSumPivots[2] == 77 && maxDisSumPivots[3] == 80 && maxDisSumPivots[4] == 99) {
+        printf("into make_minheap, 16 35 77 80 99 : %lf\n", maxDistanceSum[0]);
+        flag++;
+    } 
     int fa = start;
+    
     int child = fa * 2 + 1;
     while (child <= end) {
+        if (flag) {
+            printf("fa :%d child :%d ", fa, child);
+            printf("fasum: %lf left_childsum: %lf right_childsum: %lf\n", maxDistanceSum[fa], maxDistanceSum[child], maxDistanceSum[child + 1]);
+        }
         if (child + 1 <= end && maxDistanceSum[child] > maxDistanceSum[child + 1]) child++;
         if (maxDistanceSum[fa] < maxDistanceSum[child]) return;
         else{
@@ -131,6 +142,8 @@ void make_minheap(double* maxDistanceSum, int* maxDisSumPivots, int end, int sta
             child = fa * 2 + 1;
         }
     }
+
+    return;
 }
 
 int cnt = 0;
@@ -155,9 +168,9 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
         }
     }
     chebyshevSum *= 2;
-    if (pivots[0] == 46 && pivots[1] == 77 && pivots[2] == 80 && pivots[3] == 92 && pivots[4] == 99) printf(" 46 77 80 92 99 : %lf\n", chebyshevSum);
-    if (pivots[0] == 16 && pivots[1] == 35 && pivots[2] == 77 && pivots[3] == 80 && pivots[4] == 99) printf("16 35 77 80 99 : %lf\n", chebyshevSum);
-    if (pivots[0] == 6 && pivots[1] == 31 && pivots[2] == 46 && pivots[3] == 77 && pivots[4] == 80) printf(" 6 31 46 77 80 : %lf\n", chebyshevSum);
+    //if (pivots[0] == 46 && pivots[1] == 77 && pivots[2] == 80 && pivots[3] == 92 && pivots[4] == 99) printf(" 46 77 80 92 99 : %lf\n", chebyshevSum);
+    //if (pivots[0] == 16 && pivots[1] == 35 && pivots[2] == 77 && pivots[3] == 80 && pivots[4] == 99) printf("16 35 77 80 99 : %lf\n", chebyshevSum);
+    //if (pivots[0] == 6 && pivots[1] == 31 && pivots[2] == 46 && pivots[3] == 77 && pivots[4] == 80) printf(" 6 31 46 77 80 : %lf\n", chebyshevSum);
  /*   46 77 80 92 99
     16 35 77 80 99
     6 31 46 77 80*/
@@ -177,28 +190,23 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
         //1st: build heap 
         for (ki = M / 2 - 1; ki >= 0; ki--) {
             make_minheap(maxDistanceSum, maxDisSumPivots, M-1, ki,k);
-            make_maxheap(minDistanceSum, minDisSumPivots, M-1, ki, k);
+            make_maxheap(minDistanceSum, minDisSumPivots, M-1, ki,k);
         }
         flag--;
     }
     else{
         int kj;
-#pragma omp sections
-        {
-#pragma omp section
             if (chebyshevSum > maxDistanceSum[0]) {
+                //if (pivots[0] == 16 && pivots[1] == 35 && pivots[2] == 77 && pivots[3] == 80 && pivots[4] == 99) printf("into sort, 16 35 77 80 99 : %lf\n", chebyshevSum);
                 maxDistanceSum[0] = chebyshevSum;
                 for (kj = 0; kj < k; kj++) maxDisSumPivots[kj] = pivots[kj];
-                make_minheap(maxDistanceSum, maxDisSumPivots, M, 0, k);
+                make_minheap(maxDistanceSum, maxDisSumPivots, M-1, 0, k);
             }
-#pragma omp section
             if (chebyshevSum < minDistanceSum[0]) {
                 minDistanceSum[0] = chebyshevSum;
                 for (kj = 0; kj < k; kj++) minDisSumPivots[kj] = pivots[kj];
-                make_maxheap(minDistanceSum, minDisSumPivots, M, 0, k);
-
+                make_maxheap(minDistanceSum, minDisSumPivots, M-1, 0, k);
             }
-        }
     }
 }
 
@@ -249,7 +257,7 @@ void Combination(const int k, const int n, const int M, int* pivots,
 
 int main(int argc, char* argv[]){
     // filename : input file namespace
-    char* filename = (char*)"uniformvector-2dim-5h.txt";
+    char* filename = (char*)"uniformvector-4dim-1h.txt";
     if (argc == 2) {
         filename = argv[1];
     }

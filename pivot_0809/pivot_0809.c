@@ -1,7 +1,7 @@
 /*******
     run.sh:
     #!/bin/bash
-    #SBATCH --job-name=Pivot0804
+    #SBATCH --job-name=Pivot0809
     #SBATCH --partition=IPCC //如果在学校超算为 cu
     #SBATCH --nodes=1
     #SBATCH --ntasks-per-node=32
@@ -89,35 +89,13 @@ void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
     //printf("Using time: %f ms\n", (TP2.tv_sec - TP1.tv_sec) * 1000.0 + (TP2.tv_usec - TP1.tv_usec) / 1000.0);
 }
 
-
-//double SumDistance(const int k, const int n, int* pivots, double* P2PDist) {
-//    int i;
-//    double chebyshevSum = 0;
-//#pragma omp parallel for reduction(+:chebyshevSum) num_threads(32)
-//    for (i = 0; i < n; i++) {
-//        int j;
-//        for (j = i + 1; j < n; j++) {   //openmp reduction sum
-//            double chebyshev = 0;
-//            int ki;
-//            for (ki = 0; ki < k; ki++) {    //  MAX(  |d(xi,pki)-d(xj,pki)| )   openmp reduction max
-//                double dis = fabs(getP2PDistance(i,pivots[ki],P2PDist,n) - getP2PDistance(j, pivots[ki], P2PDist, n));
-//                double dis = fabs(P2PDist[i * n + pivots[ki]] - P2PDist[j * n + pivots[ki]]);
-//                chebyshev = dis > chebyshev ? dis : chebyshev;
-//            }
-//            chebyshevSum += chebyshev;
-//        }
-//    }
-//    chebyshevSum *= 2;
-//    return chebyshevSum;
-//}
-
 void make_maxheap(double* minDistanceSum, int* minDisSumPivots, int end, int start,int k) {
     int fa = start;
     int child = fa * 2 + 1;
     while (child <= end) {
         if (child + 1 <= end && minDistanceSum[child] < minDistanceSum[child + 1]) child++;
         if (minDistanceSum[fa] > minDistanceSum[child]) return;
-        else { //否则交换父子内容再继续子节点和孙节点比较
+        else {
             double temp = minDistanceSum[child];
             minDistanceSum[child] = minDistanceSum[fa];
             minDistanceSum[fa] = temp;
@@ -139,7 +117,7 @@ void make_minheap(double* maxDistanceSum, int* maxDisSumPivots, int end, int sta
     while (child <= end) {
         if (child + 1 <= end && maxDistanceSum[child] > maxDistanceSum[child + 1]) child++;
         if (maxDistanceSum[fa] < maxDistanceSum[child]) return;
-        else { //否则交换父子内容再继续子节点和孙节点比较
+        else{
             double temp = maxDistanceSum[child];
             maxDistanceSum[child] = maxDistanceSum[fa];
             maxDistanceSum[fa] = temp;
@@ -160,6 +138,7 @@ int flag = 1;
 void caculate_sort(const int k, const int n, const int M, int* pivots,
     double* maxDistanceSum, int* maxDisSumPivots, double* minDistanceSum, int* minDisSumPivots, double* P2PDist){
     int i;
+    //caculate
     double chebyshevSum = 0;
 #pragma omp parallel for reduction(+:chebyshevSum) num_threads(32)
     for (i = 0; i < n; i++) {
@@ -176,25 +155,23 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
         }
     }
     chebyshevSum *= 2;
+    //sort
     if(cnt<M){
         maxDistanceSum[cnt] = chebyshevSum;
+        minDistanceSum[cnt] = chebyshevSum;
         int kj;
-        for (kj = 0; kj < k; kj++)  maxDisSumPivots[cnt * k + kj] = pivots[kj];
+        for (kj = 0; kj < k; kj++) {
+            maxDisSumPivots[cnt * k + kj] = pivots[kj];
+            minDisSumPivots[cnt * k + kj] = pivots[kj];
+        }
         cnt++;
     }
     if(cnt==M && flag){
         int ki;
-        //1st: build minheap 
+        //1st: build heap 
         for (ki = M / 2 - 1; ki >= 0; ki--) {
             make_minheap(maxDistanceSum, maxDisSumPivots, M-1, ki,k);
-        }
-        //build maxheap from minheap
-        for(ki=0;ki<M;ki++){
-            minDistanceSum[ki] = maxDistanceSum[M-ki-1];
-            int kj;
-            for (kj = 0; kj < k; kj++) {
-                minDisSumPivots[ki*k + kj] = maxDisSumPivots[(M-ki-1)*k + kj];
-            }
+            make_maxheap(minDistanceSum, minDisSumPivots, M-1, ki, k);
         }
         flag--;
     }
@@ -217,43 +194,6 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
             }
         }
     }
-
-
-    // sort
-    /*maxDistanceSum[M] = chebyshevSum;
-    minDistanceSum[M] = chebyshevSum;
-    int kj;
-    for (kj = 0; kj < k; kj++) {
-        maxDisSumPivots[M * k + kj] = pivots[kj];
-        minDisSumPivots[M * k + kj] = pivots[kj];
-    }*/
-    
-    /*int a;
-    for (a = M; a > 0; a--) {
-        if (maxDistanceSum[a] > maxDistanceSum[a - 1]) {
-            double temp = maxDistanceSum[a];
-            maxDistanceSum[a] = maxDistanceSum[a - 1];
-            maxDistanceSum[a - 1] = temp;
-            int kj;
-            for (kj = 0; kj < k; kj++) {
-                int temp = maxDisSumPivots[a * k + kj];
-                maxDisSumPivots[a * k + kj] = maxDisSumPivots[(a - 1) * k + kj];
-                maxDisSumPivots[(a - 1) * k + kj] = temp;
-            }
-        }
-        if (minDistanceSum[a] < minDistanceSum[a - 1]) {
-            //swap()
-            double temp = minDistanceSum[a];
-            minDistanceSum[a] = minDistanceSum[a - 1];
-            minDistanceSum[a - 1] = temp;
-            int kj;
-            for (kj = 0; kj < k; kj++) {
-                int temp = minDisSumPivots[a * k + kj];
-                minDisSumPivots[a * k + kj] = minDisSumPivots[(a - 1) * k + kj];
-                minDisSumPivots[(a - 1) * k + kj] = temp;
-            }
-        }
-    }*/
 }
 
 
@@ -269,6 +209,34 @@ void Combination(const int k, const int n, const int M, int* pivots,
             i = k;
             caculate_sort(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
         }
+    }
+    //sort minheap
+    for (i = M - 1; i >= 0; i--) {
+        //swap(0,i)
+        double temp = maxDistanceSum[i];
+        maxDistanceSum[i] = maxDistanceSum[0];
+        maxDistanceSum[0] = temp;
+        int j;
+        for (j = 0; j < k; j++) {
+            int temp = maxDisSumPivots[i * k + j];
+            maxDisSumPivots[i * k + j] = maxDisSumPivots[j];
+            maxDisSumPivots[j] = temp;
+        }
+        make_minheap(maxDistanceSum, maxDisSumPivots, i - 1, 0, k);
+    }
+    //sort maxheap 
+    for (i = M - 1; i >= 0; i--) {
+        //swap(0,i)
+        double temp = minDistanceSum[i];
+        minDistanceSum[i] = minDistanceSum[0];
+        minDistanceSum[0] = temp;
+        int j;
+        for (j = 0; j < k; j++) {
+            int temp = minDisSumPivots[i * k + j];
+            minDisSumPivots[i * k + j] = minDisSumPivots[j];
+            minDisSumPivots[j] = temp;
+        }
+        make_maxheap(minDistanceSum, minDisSumPivots, i - 1, 0, k);
     }
 }
 
@@ -297,9 +265,9 @@ int main(int argc, char* argv[]){
         printf("%s file not found.\n", filename);
         return -1;
     }
-    fscanf(file, "%d", &dim);//2
-    fscanf(file, "%d", &n);//500
-    fscanf(file, "%d", &k);//2
+    fscanf(file, "%d", &dim);
+    fscanf(file, "%d", &n);
+    fscanf(file, "%d", &k);
     printf("dim = %d, n = %d, k = %d\n", dim, n, k);
 
     // Read Data
@@ -353,34 +321,6 @@ int main(int argc, char* argv[]){
 
     // Main loop. Combine different pivots with recursive function and evaluate them. Complexity : O( n^(k+2) )
     Combination(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
-    //2rd: sort minheap 
-    for (i = M - 1; i >= 0; i--) {
-        //swap(0,i)
-        double temp = maxDistanceSum[i];
-        maxDistanceSum[i] = maxDistanceSum[0];
-        maxDistanceSum[0] = temp;
-        int j;
-        for (j = 0; j < k; j++) {
-            int temp = maxDisSumPivots[i * k + j];
-            maxDisSumPivots[i * k + j] = maxDisSumPivots[j];
-            maxDisSumPivots[j] = temp;
-        }
-        make_minheap(maxDistanceSum, maxDisSumPivots, i-1, 0, k);
-    }
-    //sort maxheap 
-    for (i = M - 1; i >= 0; i--) {
-        //swap(0,i)
-        double temp = minDistanceSum[i];
-        minDistanceSum[i] = minDistanceSum[0];
-        minDistanceSum[0] = temp;
-        int j;
-        for (j = 0; j < k; j++) {
-            int temp = minDisSumPivots[i * k + j];
-            minDisSumPivots[i * k + j] = minDisSumPivots[j];
-            minDisSumPivots[j] = temp;
-        }
-        make_maxheap(minDistanceSum, minDisSumPivots, i - 1, 0, k);
-    }
 
     free(P2PDist);
     // End timing
