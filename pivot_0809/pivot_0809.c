@@ -1,18 +1,3 @@
-/*******
-    run.sh:
-    #!/bin/bash
-    #SBATCH --job-name=Pivot0809
-    #SBATCH --partition=IPCC //Èç¹ûÔÚÑ§Ð£³¬ËãÎª cu
-    #SBATCH --nodes=1
-    #SBATCH --ntasks-per-node=32
-    #SBATCH --error=%j.err
-    #SBATCH --output=%j.out
-    icpc pivot_0808.c -Ofast -lm -qopenmp -o pivot_0809
-    ./pivot_0809
-
-    Add batch work: sbatch run.sh
-*******/
-
 #include<stdio.h>
 #include<stdlib.h>
 #include<math.h>
@@ -53,7 +38,7 @@ void SumStart_pivots(const int n, const int k, int* start_pivots,int* pivots) {
         one_loop /= i;
     }
     one_loop /= 32; //default core 32;
-    /*ÕâÀïºÜÖØÒª!!¾ßÌåÔõÃ´·ÖÈ¡¾öÓÚÄãµÄÊý¾ÝÊäÈëÁ¿*/
+    /*ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Òª!!ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½Ã´ï¿½ï¿½È¡ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½*/
     loop = one_loop;
 
     for (i = 0; i < k; i++) pivots[i] = i;
@@ -155,6 +140,13 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
         }
     }
     chebyshevSum *= 2;
+/*    if (pivots[0] == 46 && pivots[1] == 77 && pivots[2] == 80 && pivots[3] == 92 && pivots[4] == 99) printf(" 46 77 80 92 99 : %lf\n", chebyshevSum);
+    if (pivots[0] == 16 && pivots[1] == 35 && pivots[2] == 77 && pivots[3] == 80 && pivots[4] == 99) printf("16 35 77 80 99 : %lf\n", chebyshevSum);
+    if (pivots[0] == 6 && pivots[1] == 31 && pivots[2] == 46 && pivots[3] == 77 && pivots[4] == 80) printf(" 6 31 46 77 80 : %lf\n", chebyshevSum);
+    */
+ /*   46 77 80 92 99
+    16 35 77 80 99
+    6 31 46 77 80*/
     //sort
     if(cnt<M){
         maxDistanceSum[cnt] = chebyshevSum;
@@ -183,13 +175,13 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
             if (chebyshevSum > maxDistanceSum[0]) {
                 maxDistanceSum[0] = chebyshevSum;
                 for (kj = 0; kj < k; kj++) maxDisSumPivots[kj] = pivots[kj];
-                make_minheap(maxDistanceSum, maxDisSumPivots, M, 0, k);
+                make_minheap(maxDistanceSum, maxDisSumPivots, M-1, 0, k);
             }
 #pragma omp section
             if (chebyshevSum < minDistanceSum[0]) {
                 minDistanceSum[0] = chebyshevSum;
                 for (kj = 0; kj < k; kj++) minDisSumPivots[kj] = pivots[kj];
-                make_maxheap(minDistanceSum, minDisSumPivots, M, 0, k);
+                make_maxheap(minDistanceSum, minDisSumPivots, M-1, 0, k);
 
             }
         }
@@ -200,13 +192,14 @@ void caculate_sort(const int k, const int n, const int M, int* pivots,
 void Combination(const int k, const int n, const int M, int* pivots,
     double* maxDistanceSum, int* maxDisSumPivots, double* minDistanceSum, int* minDisSumPivots, double* P2PDist) {
     int i, j;
-    //µÚÒ»´Î
+    //ï¿½ï¿½Ò»ï¿½ï¿½
     caculate_sort(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
     for (i = k - 1; i >= 0; i--) {
         if (pivots[i] < i + n - k) {	//the least last maxDistanceSumay num < n-1
             pivots[i]++;
             for (j=i+1; j<k; j++) pivots[j] = pivots[j - 1] + 1;
             i = k;
+            
             caculate_sort(k, n, M, pivots, maxDistanceSum, maxDisSumPivots, minDistanceSum, minDisSumPivots, P2PDist);
         }
     }
@@ -242,7 +235,7 @@ void Combination(const int k, const int n, const int M, int* pivots,
 
 int main(int argc, char* argv[]){
     // filename : input file namespace
-    char* filename = (char*)"uniformvector-2dim-5h.txt";
+    char* filename = (char*)"uniformvector-4dim-1h.txt";
     if (argc == 2) {
         filename = argv[1];
     }
@@ -276,7 +269,7 @@ int main(int argc, char* argv[]){
     for (i = 0; i < n; i++) {
         int j;
         for (j = 0; j < dim; j++) {
-            fscanf(file, "%lf", &coord[i * dim + j]);//¶ÁÈ¡ËùÓÐ¾ØÕóÊý¾Ý
+            fscanf(file, "%lf", &coord[i * dim + j]);//ï¿½ï¿½È¡ï¿½ï¿½ï¿½Ð¾ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½ï¿½
         }
     }
     fclose(file);
@@ -287,7 +280,7 @@ int main(int argc, char* argv[]){
 
     // maxDistanceSum : the largest M distance sum
     // minDistanceSum : the smallest M distance sum
-    double* maxDistanceSum = (double*)malloc(sizeof(double) * (M + 1));//1001µÄ¿Õ¼ä,¿¼ÂÇ´æ´¢¿Õ¼ä,double 64
+    double* maxDistanceSum = (double*)malloc(sizeof(double) * (M + 1));//1001ï¿½Ä¿Õ¼ï¿½,ï¿½ï¿½ï¿½Ç´æ´¢ï¿½Õ¼ï¿½,double 64
     double* minDistanceSum = (double*)malloc(sizeof(double) * (M + 1));
     for (i = 0; i < M; i++) {
         maxDistanceSum[i] = 0;
@@ -360,4 +353,4 @@ int main(int argc, char* argv[]){
     printf("%lf\n", minDistanceSum[0]);
 
     return 0;
-}
+}																																														

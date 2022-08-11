@@ -299,3 +299,75 @@ case2 16 2170890	100,000ms
 case2 refer line 251
 
 16 35 77 80 99 输出的result.txt没有这一行
+
+### 0811
+
+开始堆combination做并行
+
+优先考虑的是大小嵌套循环怎么样才能得到一个比较好的效果
+
+先写一个串行的test文件试一试吧
+
+嵌套并行很慢很慢
+
+所以放弃对sumdistance循环的并行,只对外部的combination做并行
+
+```powershell
+cu:
+
+#查看CPU信息（型号）
+cat /proc/cpuinfo | grep name | cut -f2 -d: | uniq -c
+ 32  Intel(R) Xeon(R) Gold 6326 CPU @ 2.90GHz
+# 查看物理CPU个数
+cat /proc/cpuinfo | grep "physical id" | sort | uniq | wc -l
+2
+# 查看每个物理CPU中core的个数(即核数)
+cat /proc/cpuinfo | grep "cpu cores" | uniq
+cpu cores: 16
+
+# 查看逻辑CPU的个数
+cat /proc/cpuinfo | grep "processor" | wc -l
+32
+```
+
+写完了
+
+开始测试
+
+段错误 pivots
+
+重新理一理思路 代码写的有点乱,有点烂
+
+1.先从Combination开始,把flag和cnt优化一下
+
+优化完成 ,用一个指针变量去做这个事
+
+2.继续测试,意识到指针变量不能作为一个私有变量去使用,所以必须在并行块里面作malloc.但是,对于只读的P2PDist矩阵就可以直接作为一个share变量去使用.
+
+```
+icc pivot_0812.c -Ofast -ipo -qopenmp -fp-model fast=2 -g -o pivot_0812
+```
+
+3.继续测试,发现一开始有一个变量忘记改了,
+
+pivot[i]=i
+
+导致Startnum函数的输出矩阵有问题
+
+
+
+vim翻半页
+
+- `ctr-d`：向后翻半页
+- `ctr-u`：向前翻半页
+
+ vim整整页
+
+- `ctr+f`：向后翻整页
+- `ctr+b`：向前翻整页
+
+
+
+有一个莫名其妙的bug
+
+读不了共享变量StartPivots本地跑的可以读　cu上的就不行...
