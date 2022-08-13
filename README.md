@@ -85,11 +85,11 @@ pivot.tar
 
 跑一次distanceSum大循环大概是2-4ms 未优化
 
-得到结果：
+**得到结果：**
 
-max:143 351 117761.647418
+**max:143 351 117761.647418**
 
-min:83 226 43769.849602
+**min:83 226 43769.849602**
 
 ## 赛题源代码（不经任何优化）耗时：440104.109ms
 
@@ -371,3 +371,66 @@ vim翻半页
 有一个莫名其妙的bug
 
 读不了共享变量StartPivots本地跑的可以读　cu上的就不行...
+
+```shell
+//Default version
+gcc pivot.c -lm -o pivot
+gcc pivot.c -lm -O3 -o pivot
+//using intel icc compiler
+icc pivot.c -Ofast -o pivot
+//Add -fp-model to speedup floats caculation
+//icc pivot.c -Ofast -fp-model fast=2 -o pivot
+//Add -qopenmp to use openmp parallel
+icc pivot.c -Ofast -fp-model fast=2 -qopenmp -o pivot
+//Add ipo to reduce process costs
+icc pivot.c -Ofast -fp-model fast=2 -qopenmp -ipo -o pivot
+//bind proc to reduce cache conflict
+export OMP_PROC_BIND=true
+export OMP_PLACES=cores
+```
+
+继续昨天晚上的debug
+
+使用gdb调试,发现值传递没有进行 很奇怪.
+
+值传递的语句没有进行
+
+```c
+#define M 20000
+#define N 5000
+
+int main(int argc, char* argv[]){
+    int i;
+    int* B = (int*)malloc(sizeof(int)*M);
+    for(i=0;i<M;i++) B[i]=i;
+    #pragma omp parallel num_threads(4)
+    {
+        int tid = omp_get_thread_num();
+        int* A = (int*)malloc(sizeof(int)*N);
+        #pragma omp critical
+        {
+            for(i=0;i<N;i++){
+                A[i] = tid*N+i;
+            }
+        }
+        for(int i=0;i<N;i++){
+			B[tid*N+i] = A[i];
+        }
+
+    }
+    for(i=0;i<M;i++){
+        printf("%d\n",B[i]);
+    }
+
+    free(B);
+    return 0;
+}
+//输出正确 如果消去第一个的critical将会出错
+```
+
+### 0813
+
+从头到尾捋了一遍代码
+
+在Caculate_sort函数内出现了数据竞争,早上起来看看能不能解决
+
